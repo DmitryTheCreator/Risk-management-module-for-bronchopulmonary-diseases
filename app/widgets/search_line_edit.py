@@ -1,4 +1,4 @@
-from PyQt5.QtGui import QIcon
+from PyQt5.QtGui import QIcon, QFont
 from PyQt5.QtWidgets import QLineEdit, QToolButton, QHBoxLayout, QStyle
 from PyQt5.QtCore import Qt, QSize
 
@@ -19,8 +19,24 @@ class SearchLineEdit(QLineEdit):
         layout.setContentsMargins(0, 0, 20, 0)
         layout.setSpacing(0)
 
-        self.setStyleSheet("padding-right: {}px;".format(self.button.width() + 10))
-        self.setStyleSheet("QLineEdit {overflow: hidden;}")
+        self.setPlaceholderText('Поиск по названию болезни')
+        self.setFixedHeight(40)
+        self.setFixedWidth(540)
+
+        self.setStyleSheet(
+            """
+            QLineEdit {{
+                border: 1px solid #000;
+                border-radius: 20px;
+                background-color: #E0E0E0;
+                padding-left: 10px;
+                padding-right: {}px;
+                font-size: 16px;
+                overflow: hidden;
+            }}
+            """.format(self.button.width() + 10)
+        )
+        self.setTextMargins(0, 0, self.button.width() + 30, 0)
 
     def button_clicked(self):
         print("Button Clicked. Do something.")
