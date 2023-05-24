@@ -1,6 +1,6 @@
-from PyQt5.QtGui import QIcon, QFont
-from PyQt5.QtWidgets import QLineEdit, QToolButton, QHBoxLayout, QStyle
-from PyQt5.QtCore import Qt, QSize
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import QLineEdit, QToolButton, QHBoxLayout
 
 
 class SearchLineEdit(QLineEdit):
@@ -39,7 +39,17 @@ class SearchLineEdit(QLineEdit):
         self.setTextMargins(0, 0, self.button.width() + 30, 0)
 
     def button_clicked(self):
-        print("Button Clicked. Do something.")
+        # Получите текущий текст из SearchLineEdit
+        search_text = self.text()
+
+        print("search_text:", search_text)
+        print("type of search_text:", type(search_text))
+
+        # Получите ссылку на главное окно
+        main_window = self.window()
+
+        # Вызовите функцию поиска с search_text
+        main_window.search_diseases(search_text)
 
     def set_button_visible(self, visible):
         self.button.setVisible(visible)
