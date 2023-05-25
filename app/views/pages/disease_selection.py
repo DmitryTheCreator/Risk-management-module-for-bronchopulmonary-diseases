@@ -1,32 +1,27 @@
-from PyQt5.QtCore import Qt, QRegExp
+from PyQt5.QtCore import Qt, QRegExp, pyqtSignal
 from PyQt5.QtGui import QStandardItem, QStandardItemModel, QFont
-from PyQt5.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTreeView, QPushButton
+from PyQt5.QtWidgets import QLabel, QWidget, QVBoxLayout, QHBoxLayout, QTreeView, QPushButton, QLineEdit
 from app.models.disease_filter_proxy_model import DiseaseFilterProxyModel
 from app.utils.db.models import Disease
 from app.utils.db.session import get_session
-from app.views.risk_selection import RiskSelectionView
-from app.widgets.search_line_edit import SearchLineEdit
 
 
-class MainWindow(QMainWindow):
-    def __init__(self):
+class DiseaseSelectionView(QWidget):
+    # Сигнал, отправляемый при переходе к странице анализа рисков
+    goToRiskPageSignal = pyqtSignal()
+
+    def __init__(self, risk_analysis_data):
         super().__init__()
-        self.input_disease_tbx = SearchLineEdit()
-        self.model = QStandardItemModel()
-        self.tree = QTreeView()
-        self.disease_filter_proxy_model = DiseaseFilterProxyModel()
-        self.disease_filter_proxy_model.setFilterKeyColumn(1)
-        self.next_btn = QPushButton('Далее')
-        self.init_ui()
+        self.input_disease_tbx = QLineEdit()  # Поле ввода для поиска болезни
+        self.model = QStandardItemModel()  # Модель данных для отображения в QTreeView
+        self.tree = QTreeView()  # Виджет дерева для отображения списка болезней
+        self.disease_filter_proxy_model = DiseaseFilterProxyModel()  # Прокси-модель для фильтрации данных
+        self.next_btn = QPushButton('Далее')  # Кнопка "Далее" для перехода к следующей странице
+        self.risk_analysis_data = risk_analysis_data  # Данные анализа рисков
+        self.init_ui()  # Инициализация пользовательского интерфейса
 
     def init_ui(self):
-        self.setWindowTitle('Модуль управления рисками бронхолегочных заболеваний')
-        self.setMinimumSize(1080, 720)
-        self.setStyleSheet("background-color: rgb(245, 245, 245);")
-        self.showMaximized()
-
-        central_widget = QWidget()
-        vertical_layout = QVBoxLayout(central_widget)
+        vertical_layout = QVBoxLayout()
         vertical_layout.setContentsMargins(200, 20, 200, 20)
 
         header = QLabel('Болезни органов дыхания')
@@ -41,18 +36,19 @@ class MainWindow(QMainWindow):
         vertical_layout.addSpacing(20)
         self.input_disease_tbx.setPlaceholderText('Поиск по названию болезни')
         self.input_disease_tbx.setFixedHeight(40)
+        self.input_disease_tbx.setFixedWidth(540)
         self.input_disease_tbx.setStyleSheet(
             """
-            SearchLineEdit {
                 border: 1px solid #000;
                 border-radius: 20px;
                 background-color: #E0E0E0;
                 padding-left: 10px;
                 font-size: 16px;
-            }
             """
         )
-
+        # Подключение слота для обработки изменений в поле ввода
+        self.input_disease_tbx.textChanged.connect(self.search_diseases)
+        # Подключение слота для обработки нажатия на кнопку "Далее"
         self.next_btn.clicked.connect(self.to_risk_register_page)
         self.next_btn.setEnabled(False)
         self.next_btn.setStyleSheet('background-color: #E0E0E0;')
@@ -72,18 +68,14 @@ class MainWindow(QMainWindow):
         horizontal_layout = QHBoxLayout()
         horizontal_layout.addWidget(self.next_btn, alignment=Qt.AlignCenter)
         vertical_layout.addLayout(horizontal_layout)
-
-        self.setCentralWidget(central_widget)
+        self.setLayout(vertical_layout)
 
     def create_tree_view_widget(self):
-        self.model.setHorizontalHeaderLabels(['Код', 'Заболевание'])
+        self.model.setHorizontalHeaderLabels(['Код', 'Заболевание'])  # Установка заголовков столбцов модели
         session = get_session()
-        diseases = session.query(Disease).all()  # Загружаем все заболевания из БД
+        diseases = session.query(Disease).all()  # Запрос всех болезней из базы данных
+        parents = {None: self.model}  # Словарь для хранения родительских элементов
 
-        # Словарь для хранения родительских элементов по id
-        parents = {None: self.model}
-
-        # Словарь для хранения диапазонов кодов и соответствующих заболеваний
         disease_categories = {
             'J00-J06': (QStandardItem('J00-J06'), 'Острые респираторные инфекции верхних дыхательных путей'),
             'J10-J18': (QStandardItem('J10-J18'), 'Грипп и пневмония'),
@@ -122,8 +114,8 @@ class MainWindow(QMainWindow):
                 parent_item.appendRow([disease_item, QStandardItem(disease_name_text)])
 
         self.disease_filter_proxy_model.setSourceModel(self.model)
+        # Установка модели данных для виджета QTreeView
         self.tree.setModel(self.disease_filter_proxy_model)
-        # Создаем виджет дерева и устанавливаем модель для него
 
         font = QFont()
         font.setPointSize(14)
@@ -135,46 +127,41 @@ class MainWindow(QMainWindow):
         return self.tree
 
     def search_diseases(self, search_text):
-        print(f"Searching for: {search_text}")
-
-        # Check that search_text is not empty before proceeding
+        # Проверяем, что строка поиска не пустая, перед продолжением
         if search_text:
-            # Установка фильтра на proxy model
+            # Установка фильтра на прокси-модель с помощью регулярного выражения
             self.disease_filter_proxy_model.setFilterRegExp(QRegExp(search_text, Qt.CaseInsensitive))
         else:
-            # Если строка поиска пустая, установить фильтр на все строки
-            self.disease_filter_proxy_model.setFilterRegExp(QRegExp(".*", Qt.CaseInsensitive))
+            # Если строка поиска пустая, сбрасываем фильтр
+            self.disease_filter_proxy_model.setFilterRegExp(QRegExp())
 
     def update_next_button_state(self):
-        # Get the selected indexes
+        # Получаем выбранные индексы
         selected_indexes = self.tree.selectionModel().selectedIndexes()
 
-        # Check if any item is selected
+        # Проверяем, выбран ли хотя бы один элемент
         if selected_indexes:
-            # Get the index of the first selected item
+            # Получаем индекс первого выбранного элемента
             index = selected_indexes[0]
 
-            # Map the proxy index to the source index
+            # Отображаем индекс прокси-модели на исходный индекс
             source_index = self.disease_filter_proxy_model.mapToSource(index)
 
-            # Get the model item corresponding to the source index
+            # Получаем элемент модели, соответствующий исходному индексу
             item = self.model.itemFromIndex(source_index)
 
-            # Check if the selected item has no children
+            # Проверяем, что выбранный элемент не имеет дочерних элементов
             if item and item.hasChildren() is False:
-                # Enable the Next button
+                self.risk_analysis_data.disease = ' '.join(source_index.siblingAtColumn(1).data().split())
+                # Отключаем кнопку "Далее"
                 self.next_btn.setEnabled(True)
             else:
-                # Disable the Next button
+                # Отключаем кнопку "Далее"
                 self.next_btn.setEnabled(False)
         else:
-            # Disable the Next button
+            # Отключаем кнопку "Далее"
             self.next_btn.setEnabled(False)
 
     def to_risk_register_page(self):
-        new_page = RiskSelectionView()
-        self.setCentralWidget(new_page)
-
-
-
-
+        # Испускаем сигнал для перехода к странице анализа рисков
+        self.goToRiskPageSignal.emit()
