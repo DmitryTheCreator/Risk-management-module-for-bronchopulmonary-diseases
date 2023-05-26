@@ -9,6 +9,8 @@ from app.utils.db.session import get_session
 class RiskSelectionView(QWidget):
     # Сигнал, отправляемый при переходе к странице анализа рисков
     goToDiseasePageSignal = pyqtSignal()
+    # Сигнал, отправляемый при переходе к странице с определением причин и последствий для каждого риска
+    goToBowChartPageSignal = pyqtSignal()
 
     def __init__(self, risk_analysis_data):
         super().__init__()
@@ -131,6 +133,7 @@ class RiskSelectionView(QWidget):
     def on_next_button_clicked(self):
         if len(self.selected_risks) > 0:
             self.risk_analysis_data.selected_risk = [label.text() for label in self.selected_risks]
+            self.goToBowChartPageSignal.emit()
 
     def on_back_button_clicked(self):
         self.goToDiseasePageSignal.emit()
