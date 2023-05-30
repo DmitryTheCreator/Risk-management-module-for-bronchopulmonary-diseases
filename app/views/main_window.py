@@ -39,5 +39,10 @@ class MainWindow(QMainWindow):
     def show_bow_tie_chart_page(self):
         # Создание экземпляра виджета выбора рисков
         bow_tie_chart = BowTieChartView(self.risk_analysis_data)
+        bow_tie_chart.goToRiskPageSignal.connect(self.show_risk_selection_page)
+        bow_tie_chart.goToBayesianNetworkPageSignal.connect(self.show_bayesian_network_page)
         # Установка виджета выбора рисков в центральную область главного окна
         self.setCentralWidget(bow_tie_chart)
+
+    def show_bayesian_network_page(self):
+        pass

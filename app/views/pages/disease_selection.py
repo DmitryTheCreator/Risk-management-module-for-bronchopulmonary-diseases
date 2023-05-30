@@ -138,21 +138,17 @@ class DiseaseSelectionView(QWidget):
     def update_next_button_state(self):
         # Получаем выбранные индексы
         selected_indexes = self.tree.selectionModel().selectedIndexes()
-
         # Проверяем, выбран ли хотя бы один элемент
         if selected_indexes:
             # Получаем индекс первого выбранного элемента
             index = selected_indexes[0]
-
             # Отображаем индекс прокси-модели на исходный индекс
             source_index = self.disease_filter_proxy_model.mapToSource(index)
-
             # Получаем элемент модели, соответствующий исходному индексу
             item = self.model.itemFromIndex(source_index)
-
             # Проверяем, что выбранный элемент не имеет дочерних элементов
             if item and item.hasChildren() is False:
-                self.risk_analysis_data.disease = ' '.join(source_index.siblingAtColumn(1).data().split())
+                self.risk_analysis_data.set_disease_name(' '.join(source_index.siblingAtColumn(1).data().split()))
                 # Отключаем кнопку "Далее"
                 self.next_btn.setEnabled(True)
             else:

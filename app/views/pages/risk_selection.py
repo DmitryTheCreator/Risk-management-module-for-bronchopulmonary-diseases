@@ -2,12 +2,14 @@ from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QGridLayout, QLabel, QApplication, QPushButton, QHBoxLayout, \
     QSizePolicy
 from sqlalchemy.orm import joinedload
+
+from app.models.risk import Risk
 from app.utils.db.models import Disease, DiseaseRisk
 from app.utils.db.session import get_session
 
 
 class RiskSelectionView(QWidget):
-    # Сигнал, отправляемый при переходе к странице анализа рисков
+    # Сигнал, отправляемый при переходе к странице выбора заболевания
     goToDiseasePageSignal = pyqtSignal()
     # Сигнал, отправляемый при переходе к странице с определением причин и последствий для каждого риска
     goToBowChartPageSignal = pyqtSignal()
@@ -32,7 +34,7 @@ class RiskSelectionView(QWidget):
         header.setStyleSheet('font: 24pt "MS Sans Serif";')
         vertical_layout.addWidget(header)
 
-        disease_name = self.risk_analysis_data.disease
+        disease_name = self.risk_analysis_data.get_disease_name()
         disease_label = QLabel(f'для заболевания: "{disease_name}"')
         disease_label.setWordWrap(True)  # Включаем перенос слов
         disease_label.setAlignment(Qt.AlignTop | Qt.AlignCenter)
@@ -132,7 +134,8 @@ class RiskSelectionView(QWidget):
 
     def on_next_button_clicked(self):
         if len(self.selected_risks) > 0:
-            self.risk_analysis_data.selected_risk = [label.text() for label in self.selected_risks]
+            for label in self.selected_risks:
+                self.risk_analysis_data.add_risk(Risk(label.text()))
             self.goToBowChartPageSignal.emit()
 
     def on_back_button_clicked(self):
