@@ -1,5 +1,6 @@
 from PyQt5.QtWidgets import QMainWindow
 from app.models.risk_analysis_data import RiskAnalysisData
+from app.views.pages.bayesian_network import BayesianNetworkView
 from app.views.pages.bow_tie_chart import BowTieChartView
 from app.views.pages.disease_selection import DiseaseSelectionView
 from app.views.pages.risk_selection import RiskSelectionView
@@ -45,4 +46,5 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(bow_tie_chart)
 
     def show_bayesian_network_page(self):
-        pass
+        bayesian_network = BayesianNetworkView(self.risk_analysis_data)
+        self.setCentralWidget(bayesian_network)
