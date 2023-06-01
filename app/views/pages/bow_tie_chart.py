@@ -4,6 +4,8 @@ from PyQt5.QtWebEngineWidgets import QWebEngineView
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QLabel, QLineEdit, QPushButton, QComboBox, QMessageBox, QListWidget, \
     QHBoxLayout
 
+from app.models.edge import Cause, Consequence
+
 
 class BowTieChartView(QWidget):
     # Сигнал, отправляемый при переходе к странице анализа рисков
@@ -164,10 +166,10 @@ class BowTieChartView(QWidget):
         current_risk = self.risk_analysis_data.get_risk_by_id(self.current_item_index)
 
         if is_valid_input(cause):
-            current_risk.add_cause(cause)
+            current_risk.add_cause(Cause(cause))
 
         if is_valid_input(consequence):
-            current_risk.add_consequence(consequence)
+            current_risk.add_consequence(Consequence(consequence))
 
         if is_valid_input(cause) or is_valid_input(consequence):
             self.update_states(current_risk)
@@ -179,29 +181,27 @@ class BowTieChartView(QWidget):
     def update_combo_boxes(self, risk):
         # Обновление выпадающих списков причин и последствий
         self.cause_combo.clear()
-        self.cause_combo.addItems(risk.get_causes())
+        self.cause_combo.addItems(cause.get_name() for cause in risk.get_causes())
         self.remove_cause_button.setEnabled(len(risk.get_causes()) > 1)
 
         self.consequence_combo.clear()
-        self.consequence_combo.addItems(risk.get_consequences())
+        self.consequence_combo.addItems(consequences.get_name() for consequences in risk.get_consequences())
         self.remove_consequence_button.setEnabled(len(risk.get_consequences()) > 1)
 
     def remove_cause(self):
         # Удаление выбранной причины
         cause = self.cause_combo.currentText()
         risk = self.risk_analysis_data.get_risk_by_id(self.current_item_index)
-        causes = risk.get_causes()
-        if cause in causes and len(causes) > 1:
-            risk.remove_cause(cause)
+        if risk.included_in_causes(cause) and len(risk.get_causes()) > 1:
+            risk.remove_cause(risk.get_cause_by_name(cause))
             self.update_states(risk)
 
     def remove_consequence(self):
         # Удаление выбранного последствия
         consequence = self.consequence_combo.currentText()
         risk = self.risk_analysis_data.get_risk_by_id(self.current_item_index)
-        consequences = risk.get_consequences()
-        if consequence in consequences and len(consequences) > 1:
-            risk.remove_consequence(consequence)
+        if risk.included_in_consequences(consequence) and len(risk.get_consequences()) > 1:
+            risk.remove_consequence(risk.get_consequence_by_name(consequence))
             self.update_states(risk)
 
     def switch_to_next_risk(self):
@@ -300,8 +300,8 @@ def is_valid_input(input_str):
 
 def create_chart(risk):
     # Создание графика галстук-бабочки для риска
-    causes = risk.get_causes()
-    consequences = risk.get_consequences()
+    causes = [cause.get_name() for cause in risk.get_causes()]
+    consequences = [consequence.get_name() for consequence in risk.get_consequences()]
 
     if not causes and not consequences:
         message = "Введите причины и последствия"
@@ -314,7 +314,7 @@ def create_chart(risk):
         target = [len(causes)] * len(causes) + [
             len(causes) + 1 + consequences.index(consequence)
             for consequence in consequences]
-        link_color = ['#0A4D68'] * len(causes) + ['#336699'] * len(consequences)
+        link_color = ['#336699'] * len(causes) + ['#0A4D68'] * len(consequences)
 
         nodes_amount = len(causes) + len(consequences)
         causes_value = [nodes_amount / 2 / len(causes)] * len(causes) if len(causes) != 0 else []

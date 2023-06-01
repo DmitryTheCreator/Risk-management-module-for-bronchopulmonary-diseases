@@ -34,11 +34,29 @@ class Risk:
     def get_enable_state(self):
         return self.is_enable
 
-    def set_enable_state(self):
-        self.is_enable = True
+    def set_enable_state(self, is_enable=True):
+        self.is_enable = is_enable
 
     def get_chart_data(self):
         return self._chart_data
+
+    def included_in_causes(self, cause_name):
+        return cause_name in [cause.get_name() for cause in self._causes]
+
+    def included_in_consequences(self, consequence_name):
+        return consequence_name in [consequence.get_name() for consequence in self._consequences]
+
+    def get_cause_by_name(self, cause_name):
+        for cause in self._causes:
+            if cause.get_name() == cause_name:
+                return cause
+        return None
+
+    def get_consequence_by_name(self, consequence_name):
+        for consequence in self._consequences:
+            if consequence.get_name() == consequence_name:
+                return consequence
+        return None
 
     def set_chart_data(self, labels, node_color, source, target, value, link_color):
         fig = go.Figure(data=[go.Sankey(
