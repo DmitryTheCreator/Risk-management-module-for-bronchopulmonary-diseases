@@ -46,14 +46,12 @@ class BowTieChartView(QWidget):
 
         # Инициализация индекса текущего выбранного риска и списка активных элементов списка
         self.current_item_index = 0
-        self.enabled_list_items = [self.risk_analysis_data.get_risk_by_id(self.current_item_index).get_name()]
-
         # Установка состояния первого риска и заполнение списка рисков
         self.risk_analysis_data.get_risk_by_id(0).set_enable_state()
         self.fill_risks_list()
 
         # Обновление состояния интерфейса на основе первого риска
-        self.update_risk_list_state()
+        self.check_filled_risks()
         self.init_ui()
         self.update_states(self.risk_analysis_data.get_risk_by_id(0))
 
@@ -216,13 +214,12 @@ class BowTieChartView(QWidget):
     def update_next_risk_button_state(self, risk):
         # Обновление состояния кнопки перехода к следующему риску
         # Кнопка активна, если текущий риск имеет хотя бы одну причину и одно последствие
-        if all_data_entered_for_current_risk(risk):
+        if self.all_data_entered_for_all_risks() or self.risks_list.currentIndex() == self.risks_list.count() - 1:
+            self.next_risk_button.hide()
+        elif all_data_entered_for_current_risk(risk):
             self.next_risk_button.setEnabled(True)
         else:
             self.next_risk_button.setEnabled(False)
-
-        if self.risks_list.currentIndex() == self.risks_list.count() - 1:
-            self.next_risk_button.hide()
 
     def update_risk_list_state(self):
         # Обновление состояния списка рисков
@@ -239,10 +236,11 @@ class BowTieChartView(QWidget):
 
     def check_filled_risks(self):
         # Проверка, что все риски имеют заполненные данные
-        for risk in self.risk_analysis_data.get_selected_risks():
-            if not all_data_entered_for_current_risk(risk):
-                return
-        self.next_button.setEnabled(True)
+        # for risk in self.risk_analysis_data.get_selected_risks():
+        #     if not all_data_entered_for_current_risk(risk):
+        #         return
+        if self.all_data_entered_for_all_risks():
+            self.next_button.setEnabled(True)
 
     def update_states(self, risk):
         # Обновление состояний элементов интерфейса на основе текущего риска
@@ -257,6 +255,13 @@ class BowTieChartView(QWidget):
             self.header.hide()
             self.chart_view.show()
             self.chart_view.load(result)
+
+    def all_data_entered_for_all_risks(self):
+        # Проверка, что все данные введены для текущего риска
+        for risk in self.risk_analysis_data.get_selected_risks():
+            if not (len(risk.get_causes()) > 0 and len(risk.get_consequences()) > 0):
+                return False
+        return True
 
     def on_next_button_clicked(self):
         # Обработка нажатия кнопки "Далее"

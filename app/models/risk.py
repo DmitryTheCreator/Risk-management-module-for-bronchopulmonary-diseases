@@ -7,6 +7,8 @@ class Risk:
         self._name = name
         self._causes = []
         self._consequences = []
+        self._causes_remaining_probability = 1
+        self._consequences_remaining_probability = 1
         self.is_enable = False
         self._chart_data = None
 
@@ -57,6 +59,26 @@ class Risk:
             if consequence.get_name() == consequence_name:
                 return consequence
         return None
+
+    def get_causes_remaining_probability(self):
+        return round(self._causes_remaining_probability, 8)
+
+    def change_causes_remaining_probability(self, input_value, is_plus):
+        if is_plus:
+            value = input_value
+        else:
+            value = -input_value
+        self._causes_remaining_probability += value
+
+    def get_consequences_remaining_probability(self):
+        return round(self._consequences_remaining_probability, 8)
+
+    def change_consequences_remaining_probability(self, input_value, is_plus):
+        if is_plus:
+            value = input_value
+        else:
+            value = -input_value
+        self._consequences_remaining_probability += value
 
     def set_chart_data(self, labels, node_color, source, target, value, link_color):
         fig = go.Figure(data=[go.Sankey(

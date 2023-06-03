@@ -1,16 +1,21 @@
-import re
 from collections import defaultdict
 
 import networkx as nx
-from PyQt5.QtCore import Qt
-from PyQt5.QtWebEngineWidgets import QWebEngineView
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
+from PyQt5.QtCore import Qt, pyqtSignal
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QPushButton, QLineEdit, QLabel, QListWidget, QComboBox, QHBoxLayout, \
     QMessageBox
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+
+from app.models.edge import Cause
 
 
 class BayesianNetworkView(QWidget):
+    # Сигнал, отправляемый при переходе к странице определения причин и последствий
+    goToBowChartPageSignal = pyqtSignal()
+    # Сигнал, отправляемый при переходе к странице с форированием карты рисков
+    goToRiskMapPageSignal = pyqtSignal()
+
     def __init__(self, risk_analysis_data):
         super().__init__()
         self.risk_analysis_data = risk_analysis_data
@@ -31,21 +36,15 @@ class BayesianNetworkView(QWidget):
         self.consequence_add_combo = QComboBox()
         self.cause_add_input = QLineEdit()
         self.consequence_add_input = QLineEdit()
-        self.cause_remove_combo = QComboBox()
-        self.consequence_remove_combo = QComboBox()
-        self.cause_add_button = QPushButton('Определить оценку для причины')
-        self.consequence_add_button = QPushButton('Определить оценку для последствия')
-        self.cause_remove_button = QPushButton('Удалить оценку для причины')
-        self.consequence_remove_button = QPushButton('Удалить оценку для последствия')
-        # self.add_button.clicked.connect(self.add_cause_consequence)
+        self.cause_add_button = QPushButton('Оценить причину')
+        self.consequence_add_button = QPushButton('Оценить последствие')
+
+        self.cause_add_button.clicked.connect(self.add_cause_probability)
+        self.consequence_add_button.clicked.connect(self.add_consequence_probability)
+
         self.risks_list = QListWidget()
         self.risks_list.itemClicked.connect(self.on_risk_selected)
 
-
-        # self.remove_cause_button.clicked.connect(self.remove_cause)
-        # self.remove_cause_button.setEnabled(False)
-        # self.remove_consequence_button.clicked.connect(self.remove_consequence)
-        # self.remove_consequence_button.setEnabled(False)
         self.next_risk_button = QPushButton('Перейти к следующему риску')
         self.next_risk_button.clicked.connect(self.switch_to_next_risk)
         self.next_risk_button.setEnabled(False)
@@ -56,14 +55,12 @@ class BayesianNetworkView(QWidget):
         self.next_button.clicked.connect(self.on_next_button_clicked)
         # Инициализация индекса текущего выбранного риска и списка активных элементов списка
         self.current_item_index = 0
-        self.enabled_list_items = [self.risk_analysis_data.get_risk_by_id(self.current_item_index).get_name()]
-
         # Установка состояния первого риска и заполнение списка рисков
         self.risk_analysis_data.get_risk_by_id(0).set_enable_state()
         self.fill_risks_list()
 
         # Обновление состояния интерфейса на основе первого риска
-        self.update_risk_list_state()
+        self.check_filled_risks()
         self.init_ui()
         self.update_states(self.risk_analysis_data.get_risk_by_id(0))
 
@@ -116,32 +113,6 @@ class BayesianNetworkView(QWidget):
         vertical_layout_left.addLayout(hor_layout)
         vertical_layout_left.addSpacing(20)
 
-        header = QLabel('Удаление количественной оценки')
-        header.setAlignment(Qt.AlignCenter)
-        header.setStyleSheet('font: 12pt; MS Sans Serif;')
-        vertical_layout_left.addWidget(header)
-        vertical_layout_left.addSpacing(20)
-
-        hor_layout = QHBoxLayout()
-        header = QLabel('Причина')
-        header.setStyleSheet('font: 10pt; MS Sans Serif;')
-        hor_layout.addWidget(header)
-        header = QLabel('Последствие')
-        header.setStyleSheet('font: 10pt; MS Sans Serif;')
-        hor_layout.addWidget(header)
-        vertical_layout_left.addLayout(hor_layout)
-
-        hor_layout = QHBoxLayout()
-        hor_layout.addWidget(self.cause_remove_combo)
-        hor_layout.addWidget(self.consequence_remove_combo)
-        vertical_layout_left.addLayout(hor_layout)
-        vertical_layout_left.addSpacing(10)
-
-        hor_layout = QHBoxLayout()
-        hor_layout.addWidget(self.cause_remove_button)
-        hor_layout.addWidget(self.consequence_remove_button)
-        vertical_layout_left.addLayout(hor_layout)
-
         vertical_layout_right.addWidget(self.canvas_cause)
         vertical_layout_right.addWidget(self.canvas_consequence)
 
@@ -171,36 +142,54 @@ class BayesianNetworkView(QWidget):
         g_cause = nx.DiGraph()
         g_consequence = nx.DiGraph()
 
+        cause_total_prob = 0
         for cause in risk.get_causes():
-            g_cause.add_node(cause.get_name())
-        g_cause.add_node(risk.get_name())
+            cause_prob = cause.get_probability()
+            cause_total_prob += cause_prob if cause_prob is not None else 0
+            g_cause.add_node(cause.get_name(), probability=cause_prob)
+        g_cause.add_node(risk.get_name(), probability=round(cause_total_prob, 8))
         for cause in risk.get_causes():
             g_cause.add_edge(risk.get_name(), cause.get_name())
 
+        consequence_total_prob = 0
         for consequence in risk.get_consequences():
-            g_consequence.add_node(consequence.get_name())
-        g_consequence.add_node(risk.get_name())
+            consequence_prob = consequence.get_probability()
+            consequence_total_prob += consequence_prob if consequence_prob is not None else 0
+            g_consequence.add_node(consequence.get_name(), probability=consequence_prob)
+        g_consequence.add_node(risk.get_name(), probability=round(consequence_total_prob, 8))
         for consequence in risk.get_consequences():
             g_consequence.add_edge(risk.get_name(), consequence.get_name())
 
         pos_cause = set_node_positions(g_cause, 0)
         pos_consequence = set_node_positions(g_consequence, 1)
 
-        # Выбор размера узлов и цвета для корневого узла и причин
         node_sizes_cause = [600 if node == risk.get_name() else 500 for node in g_cause.nodes()]
         node_colors_cause = ['#47A992' if node == risk.get_name() else '#FF7F00' for node in g_cause.nodes()]
-
-        nx.draw(g_cause, pos_cause, with_labels=True, ax=self.ax1, node_size=node_sizes_cause,
-                node_color=node_colors_cause, edge_color='#336699', font_size=10)
-
-        # Выбор размера узлов и цвета для корневого узла и последствий
         node_sizes_consequence = [600 if node == risk.get_name() else 500 for node in g_consequence.nodes()]
-        node_colors_consequence = ['#47A992' if node == risk.get_name() else '#E84545' for node in g_consequence.nodes()]
+        node_colors_consequence = ['#47A992' if node == risk.get_name() else '#E84545' for node in
+                                   g_consequence.nodes()]
 
-        nx.draw(g_consequence, pos_consequence, with_labels=True, ax=self.ax2, node_size=node_sizes_consequence,
+        nx.draw(g_cause, pos_cause, with_labels=False, ax=self.ax1, node_size=node_sizes_cause,
+                node_color=node_colors_cause, edge_color='#336699', font_size=10)
+        nx.draw(g_consequence, pos_consequence, with_labels=False, ax=self.ax2, node_size=node_sizes_consequence,
                 node_color=node_colors_consequence, edge_color='#0A4D68', font_size=10)
 
-        # отрисовка сетей
+        for node, (x, y) in pos_cause.items():
+            probability = g_cause.nodes[node]['probability']
+            if probability is None:
+                label = f'{node}'
+            else:
+                label = f'{node}\n({probability})'
+            self.ax1.text(x, y, label, fontsize=10, ha='center')
+
+        for node, (x, y) in pos_consequence.items():
+            probability = g_consequence.nodes[node]['probability']
+            if probability is None:
+                label = f'{node}'
+            else:
+                label = f'{node}\n({probability})'
+            self.ax2.text(x, y, label, fontsize=10, ha='center')
+
         self.canvas_cause.draw()
         self.canvas_consequence.draw()
 
@@ -219,78 +208,75 @@ class BayesianNetworkView(QWidget):
             self.current_item_index = self.risk_analysis_data.get_selected_risks().index(risk)
             self.update_states(risk)
 
-    def add_cause_consequence(self):
+    def add_cause_probability(self):
         # Добавление причины и последствия к текущему риску
-        cause = self.cause_input.text()
-        consequence = self.consequence_input.text()
+        cause_text = self.cause_add_combo.currentText()
+        input_value = self.cause_add_input.text()
         current_risk = self.risk_analysis_data.get_risk_by_id(self.current_item_index)
+        current_cause = current_risk.get_cause_by_name(cause_text)
 
-        if is_valid_input(cause):
-            current_risk.add_cause(cause)
-
-        if is_valid_input(consequence):
-            current_risk.add_consequence(consequence)
-
-        if is_valid_input(cause) or is_valid_input(consequence):
+        if is_valid_input(input_value, current_risk, current_cause):
+            current_cause.set_probability(round(float(input_value), 8))
             self.update_states(current_risk)
 
         self.check_filled_risks()
-        self.cause_input.clear()
-        self.consequence_input.clear()
+        self.cause_add_input.clear()
+
+    def add_consequence_probability(self):
+        # Добавление причины и последствия к текущему риску
+        consequence_text = self.consequence_add_combo.currentText()
+        input_value = self.consequence_add_input.text()
+        current_risk = self.risk_analysis_data.get_risk_by_id(self.current_item_index)
+        current_consequence = current_risk.get_consequence_by_name(consequence_text)
+
+        if is_valid_input(input_value, current_risk, current_consequence):
+            current_consequence.set_probability(round(float(input_value), 8))
+            self.update_states(current_risk)
+
+        self.check_filled_risks()
+        self.consequence_add_input.clear()
 
     def update_combo_boxes(self, risk):
         # Обновление выпадающих списков причин и последствий
         self.cause_add_combo.clear()
-        self.cause_remove_combo.clear()
-        cause_items = [cause.get_name() for cause in risk.get_causes()]
-        self.cause_add_combo.addItems(cause_items)
-        self.cause_remove_combo.addItems(cause_items)
-        self.cause_remove_button.setEnabled(len(risk.get_causes()) > 1)
+        cause_add_items = [cause.get_name() for cause in risk.get_causes()]
+        self.cause_add_combo.addItems(cause_add_items)
 
         self.consequence_add_combo.clear()
-        self.consequence_remove_combo.clear()
-        consequence_items = [consequence.get_name() for consequence in risk.get_consequences()]
-        self.consequence_add_combo.addItems(consequence_items)
-        self.consequence_remove_combo.addItems(consequence_items)
-        self.consequence_remove_button.setEnabled(len(risk.get_consequences()) > 1)
-
-    def remove_cause(self):
-        # Удаление выбранной причины
-        cause = self.cause_combo.currentText()
-        risk = self.risk_analysis_data.get_risk_by_id(self.current_item_index)
-        causes = risk.get_causes()
-        if cause in causes and len(causes) > 1:
-            risk.remove_cause(cause)
-            self.update_states(risk)
-
-    def remove_consequence(self):
-        # Удаление выбранного последствия
-        consequence = self.consequence_combo.currentText()
-        risk = self.risk_analysis_data.get_risk_by_id(self.current_item_index)
-        consequences = risk.get_consequences()
-        if consequence in consequences and len(consequences) > 1:
-            risk.remove_consequence(consequence)
-            self.update_states(risk)
+        consequence_add_items = [consequence.get_name() for consequence in risk.get_consequences()]
+        self.consequence_add_combo.addItems(consequence_add_items)
 
     def switch_to_next_risk(self):
         # Переключение на следующий риск
-        self.current_item_index += 1
-        current_risk = self.risk_analysis_data.get_risk_by_id(self.current_item_index)
-        current_risk.set_enable_state()
-        self.update_states(current_risk)
-        if self.current_item_index + 1 >= self.risks_list.count():
-            self.next_risk_button.hide()
+        if is_valid_probabilities(self.risk_analysis_data.get_risk_by_id(self.current_item_index)):
+            self.current_item_index += 1
+            current_risk = self.risk_analysis_data.get_risk_by_id(self.current_item_index)
+            current_risk.set_enable_state()
+            self.update_states(current_risk)
+            if self.current_item_index + 1 >= self.risks_list.count():
+                self.next_risk_button.hide()
+
+    def check_filled_risks(self):
+        # Проверка, что все риски имеют заполненные данные
+        for risk in self.risk_analysis_data.get_selected_risks():
+            if not all_data_entered_for_current_risk(causes=risk.get_causes(), consequences=risk.get_consequences()):
+                return
+            if not is_valid_probabilities(risk):
+                return
+        for risk in self.risk_analysis_data.get_selected_risks():
+            risk.set_enable_state()
+        self.next_risk_button.hide()
+        self.next_button.setEnabled(True)
 
     def update_next_risk_button_state(self, risk):
         # Обновление состояния кнопки перехода к следующему риску
         # Кнопка активна, если текущий риск имеет хотя бы одну причину и одно последствие
-        if all_data_entered_for_current_risk(risk):
+        if self.risks_list.currentIndex() == self.risks_list.count() - 1:
+            self.next_risk_button.hide()
+        elif all_data_entered_for_current_risk(risk.get_causes(), risk.get_consequences()):
             self.next_risk_button.setEnabled(True)
         else:
             self.next_risk_button.setEnabled(False)
-
-        if self.risks_list.currentIndex() == self.risks_list.count() - 1:
-            self.next_risk_button.hide()
 
     def update_risk_list_state(self):
         # Обновление состояния списка рисков
@@ -307,6 +293,7 @@ class BayesianNetworkView(QWidget):
 
     def update_states(self, risk):
         # Обновление состояний элементов интерфейса на основе текущего риска
+        update_last_edge_probability(risk)
         self.update_next_risk_button_state(risk)
         self.update_combo_boxes(risk)
         self.update_risk_list_state()
@@ -314,80 +301,208 @@ class BayesianNetworkView(QWidget):
 
     def on_next_button_clicked(self):
         # Обработка нажатия кнопки "Далее"
-        self.goToBayesianNetworkPageSignal.emit()
+        self.goToRiskMapPageSignal.emit()
 
     def on_back_button_clicked(self):
         # Обработка нажатия кнопки "Назад"
-        selected_risks = self.risk_analysis_data.get_selected_risks()
-        risks_to_remove = selected_risks.copy()
+        for risk in self.risk_analysis_data.get_selected_risks():
+            risk.set_enable_state()
 
-        for risk in risks_to_remove:
-            self.risk_analysis_data.remove_risk(risk)
-
-        self.goToRiskPageSignal.emit()
+        self.goToBowChartPageSignal.emit()
 
 
-def show_error_message():
+def update_last_edge_probability(risk):
+    # Обновление вероятности последнего незаполненного узла в сети причин
+    is_none_list = []
+    for cause in risk.get_causes():
+        if cause.get_probability() is None:
+            is_none_list.append(cause)
+    if len(is_none_list) == 1:
+        # Если есть только одна незаполненная причина и сумма вероятностей остальных причин неотрицательна,
+        # устанавливаем вероятность последней незаполненной причины равной оставшейся сумме вероятностей
+        if risk.get_causes_remaining_probability() >= 0:
+            is_none_list[0].set_probability(round(risk.get_causes_remaining_probability(), 8))
+        else:
+            # Иначе, если сумма вероятностей остальных причин отрицательна, устанавливаем вероятность последней
+            # незаполненной причины равной 0
+            is_none_list[0].set_probability(0)
+        # Сбрасываем оставшуюся сумму вероятностей причин на 0
+        risk.change_causes_remaining_probability(0, False)
+
+    # Обновление вероятности последнего незаполненного узла в сети последствий
+    is_none_list = []
+    for consequence in risk.get_consequences():
+        if consequence.get_probability() is None:
+            is_none_list.append(consequence)
+    if len(is_none_list) == 1:
+        # Если есть только одно незаполненное последствие и сумма вероятностей остальных последствий неотрицательна,
+        # устанавливаем вероятность последнего незаполненного последствия равной оставшейся сумме вероятностей
+        if risk.get_consequences_remaining_probability() >= 0:
+            is_none_list[0].set_probability(round(risk.get_consequences_remaining_probability(), 8))
+        else:
+            # Иначе, если сумма вероятностей остальных последствий отрицательна, устанавливаем вероятность последнего
+            # незаполненного последствия равной 0
+            is_none_list[0].set_probability(0)
+        # Сбрасываем оставшуюся сумму вероятностей последствий на 0
+        risk.change_consequences_remaining_probability(0, False)
+
+
+def show_error_input_message(is_incorrect_input):
     # Отображение сообщения об ошибке ввода
+    if is_incorrect_input:
+        mes = 'Введите корректную количественную оценку'
+    else:
+        mes = f'Вводимое значение должно быть в диапазоне от 0 до 1'
     msg = QMessageBox()
     msg.setIcon(QMessageBox.Warning)
-    msg.setText("Вводимые данные могут содержать только буквы, цифры и пробелы.")
+    msg.setText(mes)
     msg.setWindowTitle("Ошибка ввода")
     msg.exec_()
 
 
-def is_valid_input(input_str):
+def show_error_total_message(message):
+    msg = QMessageBox()
+    msg.setIcon(QMessageBox.Warning)
+    msg.setText(message)
+    msg.setWindowTitle("Ошибка ввода")
+    msg.exec_()
+
+
+def all_data_entered_for_current_risk(causes=None, consequences=None):
+    # Проверяем, что для каждой причины в сети причин указана вероятность
+    if causes:
+        for cause in causes:
+            if cause.get_probability() is None:
+                return False
+    # Проверяем, что для каждого последствия в сети последствий указана вероятность
+    if consequences:
+        for consequence in consequences:
+            if consequence.get_probability() is None:
+                return False
+    return True
+
+
+def is_valid_input(input_str, risk, edge):
     # Проверка корректности ввода данных
     if len(input_str.strip()) == 0:
         return False
-    elif not re.match("^[A-Za-zА-Яа-я0-9 ]*$", input_str):
-        show_error_message()
-        return False
     else:
-        return True
+        try:
+            # Пробуем преобразовать входную строку в число
+            input_value = float(input_str)
+
+            # Проверяем, что число входит в заданный диапазон
+            if 0 <= input_value <= 1:
+                # Уменьшаем оставшуюся вероятность
+                current_prob = edge.get_probability()
+                if current_prob is not None:
+                    value = input_value - current_prob
+                else:
+                    value = input_value
+                if type(edge) is Cause:
+                    risk.change_causes_remaining_probability(value, False)
+                else:
+                    risk.change_consequences_remaining_probability(value, False)
+                return True
+            else:
+                show_error_input_message(False)
+                return False
+        except ValueError:
+            # Если преобразование не удалось, значит, ввод не был числом
+            show_error_input_message(True)
+            return False
 
 
-def all_data_entered_for_current_risk(risk):
-    # Проверка, что все данные введены для текущего риска
-    return len(risk.get_causes()) > 0 and len(risk.get_consequences()) > 0
+def is_valid_probabilities(risk):
+    # Вычисляем сумму вероятностей для причин
+    causes_probability_amount = 0
+    for cause in risk.get_causes():
+        causes_probability_amount += cause.get_probability()
+    round_cause_prob_amount = round(causes_probability_amount, 8)
+
+    # Проверяем, что сумма вероятностей причин не меньше 1
+    if round_cause_prob_amount < 1:
+        show_error_total_message(f'Сумма вероятностей всех узлов сети причин не может быть меньше 1! Текущее '
+                                 f'значение {round_cause_prob_amount}')
+        return False
+    # Проверяем, что сумма вероятностей причин не больше 1
+    elif round_cause_prob_amount > 1:
+        show_error_total_message(f'Сумма вероятностей всех узлов сети причин не может превышать 1! Текущее '
+                                 f'значение {round_cause_prob_amount}')
+        return False
+
+    consequences_probability_amount = 0
+    for consequence in risk.get_consequences():
+        consequences_probability_amount += consequence.get_probability()
+    consequence_prob_amount = round(consequences_probability_amount, 8)
+
+    # Проверяем, что сумма вероятностей последствий не меньше 1
+    if consequence_prob_amount < 1:
+        show_error_total_message(f'Сумма вероятностей всех узлов сети последствий не может быть меньше 1! Текущее '
+                                 f'значение {consequence_prob_amount}')
+        return False
+    # Проверяем, что сумма вероятностей последствий не больше 1
+    elif consequence_prob_amount > 1:
+        show_error_total_message(f'Сумма вероятностей всех узлов сети последствий не может превышать 1! Текущее '
+                                 f'значение {consequence_prob_amount}')
+        return False
+    return True
 
 
 def set_node_positions(graph, root_node_y):
-    pos = {}
-    levels = defaultdict(list)
+    # Функция для определения позиций узлов в графе
+
+    pos = {}  # Словарь для хранения позиций узлов
+    levels = defaultdict(list)  # Словарь для хранения уровней узлов
     level = 0
+
+    # Находим узлы-листья (узлы без исходящих ребер) и помещаем их в список leaf_nodes
     leaf_nodes = [node for node, out_degree in graph.out_degree() if out_degree == 0]
+
     next_level = leaf_nodes.copy()
 
+    # Постепенно проходим по каждому уровню графа, начиная с листьев и двигаясь к корню
     while next_level:
         current_level = next_level
         next_level = []
+
         for node in current_level:
             levels[level].append(node)
             next_level.extend(list(graph.predecessors(node)))
-        level += 1
+        level += 1  # Переходим на следующий уровень
 
-    total_levels = len(levels)
+    total_levels = len(levels)  # Общее количество уровней графа
+
+    # Проходим по каждому уровню, начиная с последнего
     for level, nodes in reversed(list(levels.items())):
         if level == 0:
+            # Если это корневой уровень, располагаем узлы равномерно по горизонтали
             for i, node in enumerate(nodes):
                 pos[node] = [i / (len(nodes) - 1) if len(nodes) > 1 else 0.5, root_node_y]
         else:
+            # Если это не корневой уровень
             for node in nodes:
-                parents = list(graph.predecessors(node))
+                parents = list(graph.predecessors(node))  # Предшествующие узлы
                 if parents:
+                    # Если есть предшествующие узлы, определяем позицию текущего узла между ними
                     min_parent_x = min(pos[parent][0] for parent in parents)
                     max_parent_x = max(pos[parent][0] for parent in parents)
-                    siblings = [n for n in nodes if n != node]
-                    sibling_x_positions = [pos[sibling][0] for sibling in siblings]
+
+                    siblings = [n for n in nodes if n != node]  # Узлы-соседи текущего узла
+                    sibling_x_positions = [pos[sibling][0] for sibling in siblings]  # Координаты x соседних узлов
                     sibling_x_positions.sort()
-                    lower_bound = sibling_x_positions[0] if sibling_x_positions else 0
-                    upper_bound = sibling_x_positions[-1] if sibling_x_positions else 1
+
+                    lower_bound = sibling_x_positions[0] if sibling_x_positions else 0  # Нижняя граница координаты x
+                    upper_bound = sibling_x_positions[-1] if sibling_x_positions else 1  # Верхняя граница координаты x
+
                     pos[node] = [(min_parent_x + max_parent_x) / 2, (total_levels - level) / total_levels]
+
                     if pos[node][0] < lower_bound:
                         pos[node][0] = lower_bound
                     elif pos[node][0] > upper_bound:
                         pos[node][0] = upper_bound
                 else:
+                    # Если нет предшествующих узлов, устанавливаем позицию текущего узла в центре по горизонтали
                     pos[node] = [0.5, (total_levels - level) / total_levels]
     return pos
+

@@ -46,5 +46,9 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(bow_tie_chart)
 
     def show_bayesian_network_page(self):
+        # Создание экземпляра виджета байесовских сетей
         bayesian_network = BayesianNetworkView(self.risk_analysis_data)
+        bayesian_network.goToBowChartPageSignal.connect(self.show_bow_tie_chart_page)
+        bayesian_network.goToRiskMapPageSignal.connect(self.show_bow_tie_chart_page)
+        # Установка виджета выбора рисков в центральную область главного окна
         self.setCentralWidget(bayesian_network)
