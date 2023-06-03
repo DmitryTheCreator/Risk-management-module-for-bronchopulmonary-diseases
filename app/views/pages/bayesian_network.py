@@ -301,6 +301,7 @@ class BayesianNetworkView(QWidget):
 
     def on_next_button_clicked(self):
         # Обработка нажатия кнопки "Далее"
+        self.calculate_probability_score()
         self.goToRiskMapPageSignal.emit()
 
     def on_back_button_clicked(self):
@@ -309,6 +310,16 @@ class BayesianNetworkView(QWidget):
             risk.set_enable_state()
 
         self.goToBowChartPageSignal.emit()
+
+    def calculate_probability_score(self):
+        # Вычисление количественной оценки риска и его последствий
+        for risk in self.risk_analysis_data.get_selected_risks():
+            temp = 1
+            for cause in risk.get_causes():
+                temp *= (1 - cause.get_probability())
+            risk.set_probability_score(round(1 - temp, 5))
+            for consequence in risk.get_consequences():
+                consequence.set_ratio(risk.get_probability_score() * consequence.get_probability())
 
 
 def update_last_edge_probability(risk):

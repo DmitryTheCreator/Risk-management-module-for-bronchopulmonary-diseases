@@ -21,3 +21,12 @@ class Cause(Edge):
 class Consequence(Edge):
     def __init__(self, name):
         super().__init__(name)
+        self._ratio = 0
+
+    def get_ratio(self):
+        return self._ratio
+
+    def set_ratio(self, value):
+        self._ratio = value
+
+

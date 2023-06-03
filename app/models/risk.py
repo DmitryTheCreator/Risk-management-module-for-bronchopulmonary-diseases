@@ -5,6 +5,7 @@ import plotly.graph_objects as go
 class Risk:
     def __init__(self, name):
         self._name = name
+        self._probability_score = 0
         self._causes = []
         self._consequences = []
         self._causes_remaining_probability = 1
@@ -14,6 +15,12 @@ class Risk:
 
     def get_name(self):
         return self._name
+
+    def get_probability_score(self):
+        return self._probability_score
+
+    def set_probability_score(self, score):
+        self._probability_score = score
 
     def add_cause(self, cause):
         self._causes.append(cause)
