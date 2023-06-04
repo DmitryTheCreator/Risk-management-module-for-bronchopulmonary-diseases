@@ -3,6 +3,7 @@ from app.models.risk_analysis_data import RiskAnalysisData
 from app.views.pages.bayesian_network import BayesianNetworkView
 from app.views.pages.bow_tie_chart import BowTieChartView
 from app.views.pages.disease_selection import DiseaseSelectionView
+from app.views.pages.risk_map import RiskMapView
 from app.views.pages.risk_selection import RiskSelectionView
 
 
@@ -12,6 +13,7 @@ class MainWindow(QMainWindow):
         self.risk_analysis_data = RiskAnalysisData()
         # Отображение страницы выбора заболевания при запуске приложения
         self.show_disease_selection_page()
+        # self.show_risk_map_page()
         # Инициализация пользовательского интерфейса
         self.init_ui()
 
@@ -54,4 +56,5 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(bayesian_network)
 
     def show_risk_map_page(self):
-        pass
+        risk_map = RiskMapView(self.risk_analysis_data)
+        self.setCentralWidget(risk_map)
