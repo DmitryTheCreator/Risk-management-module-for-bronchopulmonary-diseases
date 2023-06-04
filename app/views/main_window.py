@@ -40,11 +40,11 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(risk_selection)
 
     def show_bow_tie_chart_page(self):
-        # Создание экземпляра виджета выбора рисков
+        # Создание экземпляра виджета диаграммы галстук-бабочка
         bow_tie_chart = BowTieChartView(self.risk_analysis_data)
         bow_tie_chart.goToRiskPageSignal.connect(self.show_risk_selection_page)
         bow_tie_chart.goToBayesianNetworkPageSignal.connect(self.show_bayesian_network_page)
-        # Установка виджета выбора рисков в центральную область главного окна
+        # Установка виджета диаграммы галстук-бабочка в центральную область главного окна
         self.setCentralWidget(bow_tie_chart)
 
     def show_bayesian_network_page(self):
@@ -52,9 +52,11 @@ class MainWindow(QMainWindow):
         bayesian_network = BayesianNetworkView(self.risk_analysis_data)
         bayesian_network.goToBowChartPageSignal.connect(self.show_bow_tie_chart_page)
         bayesian_network.goToRiskMapPageSignal.connect(self.show_risk_map_page)
-        # Установка виджета выбора рисков в центральную область главного окна
+        # Установка виджета байесовских сетей в центральную область главного окна
         self.setCentralWidget(bayesian_network)
 
     def show_risk_map_page(self):
+        # Создание экземпляра виджета карты рисков
         risk_map = RiskMapView(self.risk_analysis_data)
+        # Установка виджета карты рисков в центральную область главного окна
         self.setCentralWidget(risk_map)

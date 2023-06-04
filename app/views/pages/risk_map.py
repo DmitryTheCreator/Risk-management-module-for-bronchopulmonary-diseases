@@ -1,5 +1,4 @@
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QTableWidget, QTableWidgetItem, QHeaderView, QGridLayout
 
 
@@ -143,27 +142,3 @@ def sort_consequences(risk, lower_bound=0.3, middle_bound=0.7):
         else:
             upper_bound_items.append(consequence)
     return lower_bound_items, middle_bound_items, upper_bound_items
-
-
-# def get_color_by_probability(current_row, probability, lower_bound, middle_bound):
-#     if current_row < lower_bound:
-#         if probability < 0.3:
-#             return QColor(Qt.green)
-#         elif probability < 0.7:
-#             return QColor(Qt.green)
-#         else:
-#             return QColor(Qt.yellow)
-#     elif current_row < middle_bound:
-#         if probability < 0.3:
-#             return QColor(Qt.green)
-#         elif probability < 0.7:
-#             return QColor(Qt.yellow)
-#         else:
-#             return QColor(Qt.red)
-#     else:
-#         if probability < 0.3:
-#             return QColor(Qt.yellow)
-#         elif probability < 0.7:
-#             return QColor(Qt.yellow)
-#         else:
-#             return QColor(Qt.red)
