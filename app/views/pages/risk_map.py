@@ -90,22 +90,22 @@ class RiskMapView(QWidget):
         for row, risk_data in enumerate(risks_data):
             table_widget.setItem(row_counter, 1, QTableWidgetItem(risk_data[0].get_name()))
             for column, consequence in enumerate(risk_data[1]):
-                item = QTableWidgetItem(f'{consequence.get_name()} -> ({consequence.get_ratio()})')
-                if row_counter < 2 + len(upper_bound_risks) + len(middle_bound_risks):
+                item = QTableWidgetItem(consequence.get_name())
+                if row_counter < 2 + len(upper_bound_risks):
                     item.setBackground(Qt.yellow)
                 else:
                     item.setBackground(Qt.green)
                 table_widget.setItem(row_counter, column + 2, item)
             for column, consequence in enumerate(risk_data[2]):
-                item = QTableWidgetItem(f'{consequence.get_name()} -> ({consequence.get_ratio()})')
+                item = QTableWidgetItem(consequence.get_name())
                 if row_counter < 2 + len(upper_bound_risks) + len(middle_bound_risks):
                     item.setBackground(Qt.yellow)
                 else:
                     item.setBackground(Qt.green)
                 table_widget.setItem(row_counter, column + column_lower_bound_items + 2, item)
             for column, consequence in enumerate(risk_data[3]):
-                item = QTableWidgetItem(f'{consequence.get_name()} -> ({consequence.get_ratio()})')
-                if row_counter < 2 + len(upper_bound_risks):
+                item = QTableWidgetItem(consequence.get_name())
+                if row_counter < 2 + len(upper_bound_risks) + len(middle_bound_risks):
                     item.setBackground(Qt.red)
                 else:
                     item.setBackground(Qt.yellow)

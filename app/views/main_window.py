@@ -13,7 +13,6 @@ class MainWindow(QMainWindow):
         self.risk_analysis_data = RiskAnalysisData()
         # Отображение страницы выбора заболевания при запуске приложения
         self.show_disease_selection_page()
-        # self.show_risk_map_page()
         # Инициализация пользовательского интерфейса
         self.init_ui()
 

@@ -56,7 +56,7 @@ class DiseaseSelectionView(QWidget):
         self.next_btn.setFixedHeight(30)
 
         horizontal_layout = QHBoxLayout()
-        horizontal_layout.addWidget(self.input_disease_tbx, alignment=Qt.AlignCenter)
+        # horizontal_layout.addWidget(self.input_disease_tbx, alignment=Qt.AlignCenter)
         vertical_layout.addLayout(horizontal_layout)
         vertical_layout.addSpacing(20)
         header = QLabel('Выберите заболевание для анализа рисков')
